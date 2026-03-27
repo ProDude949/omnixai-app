@@ -34,34 +34,43 @@ tab_chat, tab_img, tab_vid = st.tabs(["💬 Chat", "🖼️ Images", "🎥 Video
 with tab_chat:
     st.subheader("Chat with OmnixAI")
     if "messages" not in st.session_state:
-        st.session_state.messages = [{"role": "assistant", "content": "Yo bro! I'm OmnixAI. Ask me anything — ideas, code, jokes, whatever 🔥"}]
+        st.session_state.messages = [{"role": "assistant", "content": "Yo bro! I'm OmnixAI. Ask me anything 🔥"}]
 
     for msg in st.session_state.messages:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
 
+    # Model selector (easy to test different models)
+    model_choice = st.sidebar.selectbox(
+        "Choose Grok Model",
+        ["grok-4", "grok-4-latest", "grok-4.20-non-reasoning", "grok-4.20-reasoning", "grok-4.1-fast-non-reasoning"],
+        index=0
+    )
+
     if prompt := st.chat_input("Ask me anything..."):
         if st.session_state.plan == "free" and st.session_state.usage["chat"] >= 20:
-            st.error("Free limit reached (20 messages). Upgrade to Pro $12 for unlimited!")
+            st.error("Free limit reached (20 messages). Upgrade to Pro!")
         else:
             st.session_state.messages.append({"role": "user", "content": prompt})
             with st.chat_message("user"):
                 st.markdown(prompt)
 
             with st.spinner("OmnixAI thinking..."):
-                response = client.chat.completions.create(
-                    model="grok-4.20-0309-non-reasoning",   # ← Updated model
-                    messages=st.session_state.messages,
-                    temperature=0.7
-                )
-                answer = response.choices[0].message.content
+                try:
+                    response = client.chat.completions.create(
+                        model=model_choice,          # ← using the selected model
+                        messages=st.session_state.messages,
+                        temperature=0.7
+                    )
+                    answer = response.choices[0].message.content
+                except Exception as e:
+                    answer = f"API Error: {str(e)[:200]}...\n\nTry another model from sidebar."
 
             st.session_state.messages.append({"role": "assistant", "content": answer})
             with st.chat_message("assistant"):
                 st.markdown(answer)
             
             st.session_state.usage["chat"] += 1
-
 # ====================== IMAGES ======================
 with tab_img:
     st.subheader("Generate Images (up to 13 free)")
